@@ -11,10 +11,14 @@ function floorToUnit(value: number, unit: number): number {
   return Math.floor(value / unit + EPSILON) * unit + 0;
 }
 
+function yen(amount: number): string {
+  return `${amount.toLocaleString('ja-JP')}円`;
+}
+
 /**
  * 割り勘計算の本体。
  * 固定額メンバーの合計を総額から差し引き、残額を倍率メンバーの weight 比で按分する。
- * 丸め差額は remainderPolicy に従って処理する（DESIGN.md §3）。
+ * 丸めで生じた差額は remainderPolicy の allocations に従って割り振る（DESIGN.md §3）。
  */
 export function computeSplit(input: SplitInput): SplitResult {
   const { total, members, roundingUnit, remainderPolicy } = input;
@@ -56,21 +60,31 @@ export function computeSplit(input: SplitInput): SplitResult {
     payments.set(m.id, rounded);
   }
 
-  if (remainderPolicy.type === 'coverShortfall') {
-    const payer = members.find((m) => m.id === remainderPolicy.memberId);
-    if (payer) {
-      const collected = [...payments.values()].reduce((a, b) => a + b, 0);
-      const diff = total - collected;
-      payments.set(payer.id, (payments.get(payer.id) ?? 0) + diff);
-    } else {
-      warnings.push('差額を負担するメンバーが選択されていません');
-    }
+  // 丸めで生じた差額。切り上げなら余り、切り捨てなら不足金（どちらも 0 以上）
+  const roundedCollected = [...payments.values()].reduce((a, b) => a + b, 0);
+  const isUp = remainderPolicy.type === 'collectUp';
+  const gap = Math.max(0, isUp ? roundedCollected - total : total - roundedCollected);
+
+  // 割り振り: 余りは減額、不足金は上乗せ。削除済みメンバーへの割り振りは無視する
+  const adjustments = new Map<string, number>();
+  let allocated = 0;
+  for (const m of members) {
+    const amount = Math.max(0, remainderPolicy.allocations[m.id] ?? 0);
+    if (amount === 0) continue;
+    const delta = isUp ? -amount : amount;
+    adjustments.set(m.id, delta);
+    payments.set(m.id, (payments.get(m.id) ?? 0) + delta);
+    allocated += amount;
+  }
+  const unallocated = gap - allocated;
+
+  if (unallocated < 0) {
+    warnings.push(`割り振りが ${yen(-unallocated)} 多すぎます`);
+  } else if (!isUp && unallocated > 0) {
+    warnings.push(`不足金があと ${yen(unallocated)} 割り振られていません`);
   }
 
-  const remainingUncovered =
-    remainderPolicy.type === 'collectUp' ||
-    !members.some((m) => m.id === remainderPolicy.memberId);
-  if (weightSum <= 0 && remaining > 0 && remainingUncovered) {
+  if (isUp && weightSum <= 0 && remaining > 0) {
     warnings.push('残額を負担するメンバーがいません');
   }
 
@@ -89,9 +103,15 @@ export function computeSplit(input: SplitInput): SplitResult {
 
   const collected = [...payments.values()].reduce((a, b) => a + b, 0);
   return {
-    payments: members.map((m) => ({ memberId: m.id, amount: payments.get(m.id) ?? 0 })),
+    payments: members.map((m) => ({
+      memberId: m.id,
+      amount: payments.get(m.id) ?? 0,
+      adjustment: adjustments.get(m.id) ?? 0,
+    })),
     collected,
     surplus: collected - total,
+    gap,
+    unallocated,
     isExact,
     warnings,
   };

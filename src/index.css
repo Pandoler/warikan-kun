@@ -204,6 +204,85 @@ select:focus {
   padding: 8px 12px;
 }
 
+/* 余り・不足金の割り振り */
+.allocation {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.allocation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.allocation-remaining {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.allocation-remaining.done {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.allocation-remaining.pending,
+.allocation-remaining.over {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.allocation-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+
+.allocation-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.allocation-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.allocation-sign {
+  color: var(--muted);
+  width: 1em;
+  text-align: center;
+}
+
+.allocation-row input {
+  width: 96px;
+  text-align: right;
+}
+
+.payment-adjust {
+  font-size: 0.7rem;
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.payment-adjust.down {
+  color: var(--ok);
+  background: #f0fdf4;
+}
+
+.payment-adjust.up {
+  color: #b45309;
+  background: #fffbeb;
+}
+
 /* 結果 */
 .warnings {
   list-style: none;

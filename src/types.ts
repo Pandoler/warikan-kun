@@ -13,10 +13,19 @@ export interface Member {
 
 export type RoundingUnit = 1 | 10 | 100 | 500;
 
-/** 丸め差額の処理方法 */
+/** メンバー id → 割り振る金額（円）。記載のないメンバーは 0 */
+export type Allocations = Record<string, number>;
+
+/**
+ * 丸め差額の処理方法。
+ * - collectUp: 全員切り上げ。生じた余り（お釣り）を allocations の額だけ各メンバーから減額する。
+ *   割り振らなかった分は余りとして残す。
+ * - collectDown: 全員切り捨て。生じた不足金を allocations の額だけ各メンバーに上乗せする。
+ *   不足のままでは会計できないため、割り振り切れていなければ警告する。
+ */
 export type RemainderPolicy =
-  | { type: 'coverShortfall'; memberId: string } // 全員切り捨て、不足分を指定メンバーが負担
-  | { type: 'collectUp' }; // 全員切り上げ、余りを表示
+  | { type: 'collectUp'; allocations: Allocations }
+  | { type: 'collectDown'; allocations: Allocations };
 
 export interface SplitInput {
   total: number;
@@ -25,12 +34,24 @@ export interface SplitInput {
   remainderPolicy: RemainderPolicy;
 }
 
+export interface Payment {
+  memberId: string;
+  /** 割り振り反映後の支払額 */
+  amount: number;
+  /** 割り振りによる増減（collectUp は負、collectDown は正、なしは 0） */
+  adjustment: number;
+}
+
 export interface SplitResult {
-  payments: { memberId: string; amount: number }[];
+  payments: Payment[];
   /** 集金合計 */
   collected: number;
-  /** 集金合計 − 総額（collectUp 時の余り。coverShortfall 時は 0 になる） */
+  /** 集金合計 − 総額（正なら余り、負なら不足） */
   surplus: number;
+  /** 丸めで生じた差額（collectUp なら余り、collectDown なら不足金）。割り振り前の値 */
+  gap: number;
+  /** まだ割り振られていない差額。負なら割り振りすぎ */
+  unallocated: number;
   /**
    * ちょうど割り切れて端数が出ないか。
    * true のとき、どの RemainderPolicy を選んでも支払額は変わらない。

@@ -20,7 +20,7 @@ export default function App() {
     Array.from({ length: INITIAL_MEMBER_COUNT }, newMember),
   );
   const [roundingUnit, setRoundingUnit] = useState<RoundingUnit>(100);
-  const [policy, setPolicy] = useState<RemainderPolicy>({ type: 'collectUp' });
+  const [policy, setPolicy] = useState<RemainderPolicy>({ type: 'collectUp', allocations: {} });
 
   // 名前未入力のメンバーには表示用の自動命名を与える
   const namedMembers = useMemo(
@@ -32,23 +32,15 @@ export default function App() {
     [members],
   );
 
-  // 差額の負担者（吸収者）が削除済みなら先頭メンバーに付け替える
-  const effectivePolicy = useMemo<RemainderPolicy>(() => {
-    if (policy.type !== 'collectUp' && !members.some((m) => m.id === policy.memberId)) {
-      return members.length > 0 ? { ...policy, memberId: members[0].id } : policy;
-    }
-    return policy;
-  }, [policy, members]);
-
   const result = useMemo(
     () =>
       computeSplit({
         total,
         members: namedMembers,
         roundingUnit,
-        remainderPolicy: effectivePolicy,
+        remainderPolicy: policy,
       }),
-    [total, namedMembers, roundingUnit, effectivePolicy],
+    [total, namedMembers, roundingUnit, policy],
   );
 
   const addMember = () => setMembers((ms) => [...ms, newMember()]);
@@ -80,9 +72,9 @@ export default function App() {
       <section className="card">
         <RoundingOptions
           roundingUnit={roundingUnit}
-          policy={effectivePolicy}
+          policy={policy}
           members={namedMembers}
-          isExact={result.isExact}
+          result={result}
           onUnitChange={setRoundingUnit}
           onPolicyChange={setPolicy}
         />

@@ -10,7 +10,7 @@ export const ROLE_PRESETS: readonly RolePreset[] = [
   { key: 'peer', label: '同僚', weight: 1.0 },
   { key: 'junior', label: '後輩', weight: 0.8 },
   { key: 'student', label: '学生・新人', weight: 0.5 },
-  { key: 'kanji', label: '幹事（無料）', weight: 0 },
+  { key: 'kanji', label: '無料', weight: 0 },
 ] as const;
 
 export function presetByKey(key: string): RolePreset | undefined {

@@ -16,12 +16,19 @@ function modeLabel(member: Member): string {
   return `${member.mode.weight}x`;
 }
 
+/** 割り振りによる増減の表示。余りの受け取りは「おつり」、不足金の負担は「不足分」 */
+function adjustmentLabel(adjustment: number): string {
+  return adjustment < 0 ? `おつり −${yen(-adjustment)}` : `不足分 +${yen(adjustment)}`;
+}
+
 function buildCopyText(total: number, members: Member[], result: SplitResult): string {
   const lines = [`【割り勘結果】合計 ${yen(total)}`];
   for (const p of result.payments) {
     const m = members.find((mem) => mem.id === p.memberId);
     if (!m) continue;
-    lines.push(`${m.name}: ${yen(p.amount)} (${modeLabel(m)})`);
+    const notes = [modeLabel(m)];
+    if (p.adjustment !== 0) notes.push(adjustmentLabel(p.adjustment));
+    lines.push(`${m.name}: ${yen(p.amount)} (${notes.join(', ')})`);
   }
   lines.push(`集金合計: ${yen(result.collected)}`);
   if (result.surplus > 0) lines.push(`余り: ${yen(result.surplus)}`);
@@ -55,6 +62,11 @@ export function ResultView({ total, members, result }: Props) {
           return (
             <li key={p.memberId} className={p.amount < 0 ? 'negative' : ''}>
               <span className="payment-name">{m.name}</span>
+              {p.adjustment !== 0 && (
+                <span className={`payment-adjust ${p.adjustment < 0 ? 'down' : 'up'}`}>
+                  {adjustmentLabel(p.adjustment)}
+                </span>
+              )}
               <span className="payment-mode">{modeLabel(m)}</span>
               <span className="payment-amount">{yen(p.amount)}</span>
             </li>
